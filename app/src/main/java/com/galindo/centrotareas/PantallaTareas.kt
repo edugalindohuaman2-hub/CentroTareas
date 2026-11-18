@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -30,6 +31,7 @@ fun PantallaTareas(
     var contador by remember { mutableIntStateOf(0) }
     val mensaje by viewModel.mensaje.collectAsState()
     val progreso by viewModel.progreso.collectAsState()
+    val corriendo by viewModel.corriendo.collectAsState()
 
     Column(
         modifier = modifier
@@ -44,8 +46,20 @@ fun PantallaTareas(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { viewModel.tareaLarga() }) {
+        Button(
+            onClick = { viewModel.tareaLarga() },
+            enabled = !corriendo
+        ) {
             Text(text = "Iniciar", fontSize = 18.sp)
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = { viewModel.cancelar() },
+            enabled = corriendo
+        ) {
+            Text(text = "Cancelar", fontSize = 18.sp)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
