@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -46,6 +47,9 @@ fun PantallaTareas(
     val hastaInt = textoHasta.toIntOrNull()
     val hastaValido = hastaInt != null && hastaInt >= 2
     val estaCalculando = primosUi is PrimosUi.Calculando
+
+    val cargaUi by viewModel.cargaUi.collectAsState()
+    val estaCargando = cargaUi is CargaUi.Cargando
 
     Column(
         modifier = modifier
@@ -159,6 +163,73 @@ fun PantallaTareas(
                         text = resultadoTexto,
                         modifier = Modifier.padding(16.dp),
                         color = Color(0xFF1B5E20),
+                        fontSize = 16.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Tarjeta Dos Cargas
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "Dos cargas", fontSize = 18.sp)
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.cargarUnaPorUna() },
+                        enabled = !estaCargando
+                    ) {
+                        Text("Una por una")
+                    }
+
+                    Button(
+                        onClick = { viewModel.cargarALaVez() },
+                        enabled = !estaCargando
+                    ) {
+                        Text("A la vez")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (estaCargando) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                val resultadoCargaTexto = when (val ui = cargaUi) {
+                    is CargaUi.Inicial -> "Listo para cargar"
+                    is CargaUi.Cargando -> "Cargando..."
+                    is CargaUi.Exito -> "Carga exitosa en ${ui.ms} ms"
+                    is CargaUi.Error -> "Error: ${ui.mensaje}"
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (cargaUi is CargaUi.Error) Color(0xFFFFCDD2) else Color(0xFFC8E6C9)
+                    )
+                ) {
+                    Text(
+                        text = resultadoCargaTexto,
+                        modifier = Modifier.padding(16.dp),
+                        color = if (cargaUi is CargaUi.Error) Color(0xFFB71C1C) else Color(0xFF1B5E20),
                         fontSize = 16.sp
                     )
                 }

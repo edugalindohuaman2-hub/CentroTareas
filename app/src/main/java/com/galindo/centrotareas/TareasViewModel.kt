@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +20,13 @@ sealed interface PrimosUi {
     object Calculando : PrimosUi
     data class Listo(val cantidad: Int, val ms: Long) : PrimosUi
     object Cancelado : PrimosUi
+}
+
+sealed interface CargaUi {
+    object Inicial : CargaUi
+    object Cargando : CargaUi
+    data class Exito(val ms: Long) : CargaUi
+    data class Error(val mensaje: String) : CargaUi
 }
 
 class TareasViewModel : ViewModel() {
@@ -35,8 +44,12 @@ class TareasViewModel : ViewModel() {
     private val _primosUi = MutableStateFlow<PrimosUi>(PrimosUi.Inicial)
     val primosUi: StateFlow<PrimosUi> = _primosUi.asStateFlow()
 
+    private val _cargaUi = MutableStateFlow<CargaUi>(CargaUi.Inicial)
+    val cargaUi: StateFlow<CargaUi> = _cargaUi.asStateFlow()
+
     private var trabajo: Job? = null
     private var primosJob: Job? = null
+    private var cargaJob: Job? = null
 
     fun tareaLarga() {
         if (_corriendo.value) return
@@ -91,5 +104,47 @@ class TareasViewModel : ViewModel() {
     fun cancelarPrimos() {
         primosJob?.cancel()
         _primosUi.value = PrimosUi.Cancelado
+    }
+
+    fun cargarUnaPorUna() {
+        cargaJob?.cancel()
+        cargaJob = viewModelScope.launch {
+            _cargaUi.value = CargaUi.Cargando
+            val inicio = System.currentTimeMillis()
+            try {
+                repository.cargarPerfil()
+                repository.cargarPedidos(false)
+                val duracion = System.currentTimeMillis() - inicio
+                _cargaUi.value = CargaUi.Exito(duracion)
+            } catch (e: CancellationException) {
+                _cargaUi.value = CargaUi.Inicial
+                throw e
+            } catch (e: Exception) {
+                _cargaUi.value = CargaUi.Error(e.localizedMessage ?: "Error desconocido")
+            }
+        }
+    }
+
+    fun cargarALaVez() {
+        cargaJob?.cancel()
+        cargaJob = viewModelScope.launch {
+            _cargaUi.value = CargaUi.Cargando
+            val inicio = System.currentTimeMillis()
+            try {
+                coroutineScope {
+                    val perfilDeferred = async { repository.cargarPerfil() }
+                    val pedidosDeferred = async { repository.cargarPedidos(false) }
+                    perfilDeferred.await()
+                    pedidosDeferred.await()
+                }
+                val duracion = System.currentTimeMillis() - inicio
+                _cargaUi.value = CargaUi.Exito(duracion)
+            } catch (e: CancellationException) {
+                _cargaUi.value = CargaUi.Inicial
+                throw e
+            } catch (e: Exception) {
+                _cargaUi.value = CargaUi.Error(e.localizedMessage ?: "Error desconocido")
+            }
+        }
     }
 }
