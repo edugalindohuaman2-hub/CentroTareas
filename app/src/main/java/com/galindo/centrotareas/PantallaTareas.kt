@@ -41,8 +41,8 @@ fun PantallaTareas(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { viewModel.tareaLargaMala() }) {
-            Text(text = "Tarea larga (MAL)", fontSize = 18.sp)
+        Button(onClick = { viewModel.tareaLarga() }) {
+            Text(text = "Tarea larga", fontSize = 18.sp)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
