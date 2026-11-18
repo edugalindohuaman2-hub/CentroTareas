@@ -58,20 +58,17 @@ Si el hilo principal se bloquea durante 10 segundos mediante operaciones síncro
 ---
 
 ## Capturas de pantalla
-1. **Paso 1 - Bloqueo de UI (`Thread.sleep`):**
-   ![Captura 1](file:///C:/Users/User/CentroTareas/screenshots/paso1_bloqueo.png)
+1. **Tarea con progreso (Cancelado):**
+   ![Tarea cancelada](screenshots/tarea_cancelada.png)
 
-2. **Paso 2 - Barra de Progreso y Corrutinas (`delay`):**
-   ![Captura 2](file:///C:/Users/User/CentroTareas/screenshots/paso2_progreso.png)
+2. **Tarea con progreso (Trabajando...):**
+   ![Tarea trabajando](screenshots/tarea_trabajando.png)
 
-3. **Paso 3 - Concurrencia y Cancelación (`Job` y `cancelar()`):**
-   ![Captura 3](file:///C:/Users/User/CentroTareas/screenshots/paso3_cancelacion.png)
+3. **Contar números primos (Resultado exitoso):**
+   ![Conteo de primos](screenshots/conteo_primos.png)
 
-4. **Paso 4 - Conteo de Primos con `Dispatchers.Default` y `ensureActive()`:**
-   ![Captura 4](file:///C:/Users/User/CentroTareas/screenshots/paso4_primos.png)
-
-5. **Paso 5 - Carga Concurrente (`async`/`await`) y Manejo de Errores con Switch:**
-   ![Captura 5](file:///C:/Users/User/CentroTareas/screenshots/paso5_cargas_errores.png)
+4. **Dos cargas (Manejo de error por Timeout):**
+   ![Dos cargas error](screenshots/dos_cargas_error.png)
 
 ---
 
