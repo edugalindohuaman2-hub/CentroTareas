@@ -6,20 +6,19 @@ import androidx.lifecycle.viewModelScope
 import com.galindo.centrotareas.data.TareasRepository
 import com.galindo.centrotareas.data.TareasRepositoryLocal
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 sealed interface PrimosUi {
     object Inicial : PrimosUi
-    object Calculando : PrimosUi
+    data class Calculando(val progreso: Float = 0f) : PrimosUi
     data class Listo(val cantidad: Int, val milisegundos: Long) : PrimosUi {
         val ms: Long get() = milisegundos
     }
@@ -39,7 +38,7 @@ class TareasViewModel(
     private val repository: TareasRepository = TareasRepositoryLocal()
 ) : ViewModel() {
 
-    // Tarjeta 1: Tarea con progreso
+    // Tarjeta 1: Tarea con progreso (usando Flow desde el Repository)
     private val _mensaje = MutableStateFlow("Listo")
     val mensaje: StateFlow<String> = _mensaje.asStateFlow()
 
@@ -61,15 +60,16 @@ class TareasViewModel(
             Log.d("HILO", "Antes: ${Thread.currentThread().name}")
 
             try {
-                withContext(Dispatchers.Default) {
-                    Log.d("HILO", "Dentro: ${Thread.currentThread().name}")
-                    for (i in 1..100) {
-                        delay(40)
-                        _progreso.value = i / 100f
-                    }
+                repository.ejecutarTareaConProgreso().collect { valor ->
+                    _progreso.value = valor
                 }
                 Log.d("HILO", "Despues: ${Thread.currentThread().name}")
                 _mensaje.value = "Terminó"
+            } catch (e: Exception) {
+                if (e is CancellationException) {
+                    _mensaje.value = "Cancelado"
+                    throw e
+                }
             } finally {
                 _corriendo.value = false
             }
@@ -81,7 +81,7 @@ class TareasViewModel(
         _mensaje.value = "Cancelado"
     }
 
-    // Tarjeta 2: Contar números primos
+    // Tarjeta 2: Contar números primos con progreso en vivo
     private val _primos = MutableStateFlow<PrimosUi>(PrimosUi.Inicial)
     val primos: StateFlow<PrimosUi> = _primos.asStateFlow()
 
@@ -89,12 +89,14 @@ class TareasViewModel(
 
     fun contar(hasta: Int) {
         primosJob?.cancel()
-        _primos.value = PrimosUi.Calculando
+        _primos.value = PrimosUi.Calculando(0f)
 
         primosJob = viewModelScope.launch {
             val inicio = System.currentTimeMillis()
             try {
-                val cantidad = repository.contarPrimos(hasta)
+                val cantidad = repository.contarPrimos(hasta) { progresoActual ->
+                    _primos.value = PrimosUi.Calculando(progresoActual)
+                }
                 val ms = System.currentTimeMillis() - inicio
                 _primos.value = PrimosUi.Listo(cantidad, ms)
             } catch (e: Exception) {
@@ -112,7 +114,7 @@ class TareasViewModel(
         _primos.value = PrimosUi.Cancelado
     }
 
-    // Tarjeta 3: Dos cargas
+    // Tarjeta 3: Dos cargas con withTimeout
     private val _carga = MutableStateFlow<CargaUi>(CargaUi.Inicial)
     val carga: StateFlow<CargaUi> = _carga.asStateFlow()
 
@@ -133,10 +135,14 @@ class TareasViewModel(
             _carga.value = CargaUi.Cargando
             val inicio = System.currentTimeMillis()
             try {
-                val perfil = repository.cargarPerfil()
-                val pedidos = repository.cargarPedidos(_simularError.value)
-                val ms = System.currentTimeMillis() - inicio
-                _carga.value = CargaUi.Exito("Una por una", perfil, pedidos.size, ms)
+                withTimeout(2000L) {
+                    val perfil = repository.cargarPerfil()
+                    val pedidos = repository.cargarPedidos(_simularError.value)
+                    val ms = System.currentTimeMillis() - inicio
+                    _carga.value = CargaUi.Exito("Una por una", perfil, pedidos.size, ms)
+                }
+            } catch (e: TimeoutCancellationException) {
+                _carga.value = CargaUi.Error("Tardó demasiado")
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _carga.value = CargaUi.Error("No se pudo cargar: ${e.message}")
@@ -152,13 +158,17 @@ class TareasViewModel(
             _carga.value = CargaUi.Cargando
             val inicio = System.currentTimeMillis()
             try {
-                val (perfil, pedidos) = coroutineScope {
-                    val a = async { repository.cargarPerfil() }
-                    val b = async { repository.cargarPedidos(_simularError.value) }
-                    Pair(a.await(), b.await())
+                withTimeout(2000L) {
+                    val (perfil, pedidos) = coroutineScope {
+                        val a = async { repository.cargarPerfil() }
+                        val b = async { repository.cargarPedidos(_simularError.value) }
+                        Pair(a.await(), b.await())
+                    }
+                    val ms = System.currentTimeMillis() - inicio
+                    _carga.value = CargaUi.Exito("A la vez", perfil, pedidos.size, ms)
                 }
-                val ms = System.currentTimeMillis() - inicio
-                _carga.value = CargaUi.Exito("A la vez", perfil, pedidos.size, ms)
+            } catch (e: TimeoutCancellationException) {
+                _carga.value = CargaUi.Error("Tardó demasiado")
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _carga.value = CargaUi.Error("No se pudo cargar: ${e.message}")
