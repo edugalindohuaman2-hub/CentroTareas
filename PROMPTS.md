@@ -1,29 +1,7 @@
-# Registro de Prompts y Mejoras con IA (CentroTareas)
+# Registro de Prompts y Mejoras con IA (Rama mejora-ia)
 
-Este documento registra las interacciones y solicitudes realizadas a la IA durante el desarrollo y optimización de la aplicación **CentroTareas** utilizando Kotlin, Jetpack Compose, Material 3 y Arquitectura MVVM + Repository con Corrutinas.
-
-## Resumen de Mejoras Implementadas
-
-1. **Gestión de hilos y bloqueo de UI (`Thread.sleep`)**:
-   - Creación de `tareaLargaMala()` en el ViewModel.
-   - Análisis y redacción en el `README.md` sobre por qué la UI no muestra `"Trabajando..."` al bloquear el hilo principal y las consecuencias de un ANR a los 10 segundos.
-
-2. **Migración a Corrutinas y Estado con `StateFlow`**:
-   - Reemplazo de bloqueos síncronos por `viewModelScope.launch`, `withContext(Dispatchers.Default)` y `delay(40)`.
-   - Implementación de la barra de progreso reactiva y monitoreo de hilos con `Log.d("HILO", ...)`.
-
-3. **Cancelación Estructurada y Concurrencia**:
-   - Almacenamiento de referencias a corrutinas mediante `private var trabajo: Job? = null`.
-   - Exposición del estado `corriendo` y creación de `cancelar()` sin reiniciar el progreso.
-
-4. **Operaciones CPU-intensivas (Conteo de Primos)**:
-   - Implementación del repositorio `TareasRepositoryLocal` (implementando `TareasRepository`).
-   - Cálculo eficiente de números primos con `withContext(Dispatchers.Default)`, `ensureActive()` para cancelación cooperativa, y algoritmo optimizado con `while (d.toLong() * d <= n)`.
-   - Gestión de estados con la interfaz sellada `PrimosUi`.
-
-5. **Cargas Concurrentes y Manejo de Errores**:
-   - Implementación de `cargarUnaPorUna()` (secuencial) y `cargarALaVez()` (concurrente usando `coroutineScope` y `async`/`await`).
-   - Simulación de errores con `Switch`, manejo robusto de excepciones relanzando `CancellationException`, y recuadro de error con opción de reintentar.
-
-6. **Documentación y Capturas de Pantalla**:
-   - Redacción completa del `README.md` con descripción, árbol de paquetes en subcarpetas (`data`, `viewmodel`, `ui`), diagrama MVVM, respuestas a la sección *"Para pensar"*, e incorporación de capturas de pantalla reales capturadas del dispositivo.
+| Prompt que escribí | Qué respondió Gemini | Qué cambié o descarté | Por qué |
+| :--- | :--- | :--- | :--- |
+| Refactoriza la tarea con progreso para respetar estrictamente MVVM + Repository: declara `fun ejecutarTareaConProgreso(): Flow<Float>` en `TareasRepository` e impleméntala en `TareasRepositoryLocal` usando `flow { for (i in 1..100) { delay(40); emit(i / 100f) } }.flowOn(Dispatchers.Default)`... | Propuso crear el método en el repositorio retornando un `Flow<Float>` y colectarlo en el ViewModel mediante `viewModelScope.launch`. | Se integró conservando la lógica de manejo de estado `corriendo`, cancelación con `Job` y actualización de mensajes. | Para cumplir estrictamente con el principio de separación de responsabilidades de la arquitectura MVVM + Repository. |
+| En TareasViewModel.kt, actualiza cargarUnaPorUna() y cargarALaVez() para envolver las llamadas al repositorio dentro de `withTimeout(2000L)`. Captura TimeoutCancellationException antes del catch (e: Exception) general... | Sugirió usar `withTimeout` y capturar primero `TimeoutCancellationException` para emitir `"Tardó demasiado"`. | Se mantuvo el manejo estructurado de excepciones y relanzamiento de `CancellationException`. | Para evitar esperas indefinidas en llamadas asíncronas y ofrecer un feedback visual de tiempo de espera excedido. |
+| Modifica contarPrimos en TareasRepository y TareasRepositoryLocal... para reportar el porcentaje de avance (0f a 1f) mientras recorre hasta hasta... Actualiza PrimosUi.Calculando en Estados.kt para recibir `val progreso: Float = 0f`... | Propuso pasar un callback de progreso `onProgress: (Float) -> Unit` en `contarPrimos` y actualizar el estado `PrimosUi.Calculando(progreso)`. | Se adaptó la UI en `PantallaTareas.kt` para mostrar una barra de progreso lineal con el porcentaje en tiempo real. | Para proporcionar retroalimentación visual interactiva al usuario durante operaciones pesadas en segundo plano. |
