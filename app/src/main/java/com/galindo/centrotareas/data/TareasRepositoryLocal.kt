@@ -3,6 +3,9 @@ package com.galindo.centrotareas.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.IOException
 
@@ -20,16 +23,26 @@ class TareasRepositoryLocal : TareasRepository {
         return listOf("Pedido 101", "Pedido 102", "Pedido 103")
     }
 
-    override suspend fun contarPrimos(hasta: Int): Int = withContext(Dispatchers.Default) {
+    override suspend fun contarPrimos(hasta: Int, onProgress: (Float) -> Unit): Int = withContext(Dispatchers.Default) {
         var contador = 0
         for (n in 2..hasta) {
             ensureActive()
             if (esPrimo(n)) {
                 contador++
             }
+            if (n % 1000 == 0 || n == hasta) {
+                onProgress(n.toFloat() / hasta.toFloat())
+            }
         }
         contador
     }
+
+    override fun ejecutarTareaConProgreso(): Flow<Float> = flow {
+        for (i in 1..100) {
+            delay(40)
+            emit(i / 100f)
+        }
+    }.flowOn(Dispatchers.Default)
 
     private fun esPrimo(n: Int): Boolean {
         if (n < 2) return false
