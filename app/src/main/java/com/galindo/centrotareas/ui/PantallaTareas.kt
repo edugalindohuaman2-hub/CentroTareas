@@ -204,17 +204,19 @@ fun PantallaTareas(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (estaCalculandoPrimos) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
                     when (val estado = primos) {
                         is PrimosUi.Inicial -> {
                             Text("Ingrese un número y presione Contar", fontSize = 14.sp)
                         }
                         is PrimosUi.Calculando -> {
-                            Text("Calculando primos...", fontSize = 14.sp)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Calculando primos: ${(estado.progreso * 100).toInt()}%", fontSize = 14.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = { estado.progreso },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                         is PrimosUi.Listo -> {
                             Card(
